@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ForgeRAG</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        #chat {
+            border: 1px solid #ccc;
+            padding: 15px;
+            height: 350px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .user {
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+        .bot {
+            color: #188038;
+            margin-bottom: 15px;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 8px;
+        }
+        button {
+            padding: 8px 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>ForgeRAG</h2>
+
+<h3>Upload PDF</h3>
+<form id="uploadForm">
+    <input type="file" id="pdfFile" accept=".pdf" required />
+    <button type="submit">Upload</button>
+</form>
+
+<p id="uploadStatus"></p>
+
+<hr>
+
+<h3>Chat</h3>
+<div id="chat"></div>
+
+<input type="text" id="questionInput" placeholder="Ask a question..." />
+<button onclick="sendQuestion()">Send</button>
+
+<script>
+const chatDiv = document.getElementById("chat");
+const uploadStatus = document.getElementById("uploadStatus");
+
+// ---------- Upload PDF ----------
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const fileInput = document.getElementById("pdfFile");
+    if (!fileInput.files.length) return;
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    uploadStatus.innerText = "Uploading and processing PDF...";
+
+    const res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    uploadStatus.innerText = data.message || "Upload failed";
+});
+
+// ---------- Streaming Chat ----------
+async function sendQuestion() {
+    const input = document.getElementById("questionInput");
+    const question = input.value.trim();
+    if (!question) return;
+
+    chatDiv.innerHTML += `<p class="user"><b>You:</b> ${question}</p>`;
+
+    const botPara = document.createElement("p");
+    botPara.className = "bot";
+    botPara.innerHTML = "<b>ForgeRAG:</b> ";
+    chatDiv.appendChild(botPara);
+
+    input.value = "";
+
+    const response = await fetch("/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        botPara.innerHTML += chunk;
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+}
+</script>
+
+</body>
+</html>

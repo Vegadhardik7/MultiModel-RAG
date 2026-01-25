@@ -1,0 +1,41 @@
+# Virtual envs
+.venv/
+venv/
+.ragvenv/
+.ragenv/
+
+# Environment files
+.env
+.env.*
+
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Packages
+pip-wheel-metadata/
+*.egg-info/
+
+# Chroma DB / vector DB data
+chroma_db/
+*.chroma/
+
+# Testing / tooling
+.pytest_cache/
+.coverage
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs / runtime
+logs/
+*.log
+data/

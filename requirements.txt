@@ -1,0 +1,20 @@
+python-dotenv
+fastapi
+uvicorn
+requests
+pillow
+
+# embeddings
+sentence-transformers
+torch
+torchvision
+transformers
+
+# vector db
+chromadb
+
+# parsing
+unstructured
+unstructured[pdf]
+python-magic-bin
+huggingface_hub[hf_xet]
