@@ -1,7 +1,8 @@
+# app/ingest/multimodal_pdf_ingest.py
+
 import os
-from typing import List
+from typing import List, Optional
 from chromadb.api.types import Metadata
-from app.embeddings.clip_helper import describe_image_with_clip
 
 from unstructured.partition.pdf import partition_pdf
 from unstructured.documents.elements import (
@@ -12,47 +13,40 @@ from unstructured.documents.elements import (
 )
 
 from app.embeddings.text_embedder import embed_texts
+from app.embeddings.clip_helper import describe_image_with_clip
 from app.vectorstore.chroma_client import get_collection
 
 
 def _linearize_table(table: Table) -> str:
-    if hasattr(table, "text") and table.text:
-        return table.text.strip()
-    return ""
+    return table.text.strip() if getattr(table, "text", None) else ""
 
 
 def _describe_image(
     image_element: UnstructuredImage,
-    surrounding_text: str | None
-) -> str:
-    description_parts: List[str] = []
+    surrounding_text: Optional[str],
+) -> Optional[str]:
+    parts = []
 
-    # Page info
     if image_element.metadata and image_element.metadata.page_number:
-        description_parts.append(
-            f"Image on page {image_element.metadata.page_number}"
-        )
+        parts.append(f"Image on page {image_element.metadata.page_number}")
 
-    # CLIP-based visual semantics
     if image_element.metadata and image_element.metadata.image_path:
         try:
-            visual_tag = describe_image_with_clip(
-                image_element.metadata.image_path
-            )
-            description_parts.append(f"Visual content: {visual_tag}")
+            tag = describe_image_with_clip(image_element.metadata.image_path)
+            parts.append(f"Visual content: {tag}")
         except Exception:
             pass
 
-    # Surrounding text (very important signal)
     if surrounding_text:
-        description_parts.append(
-            f"Surrounding context: {surrounding_text}"
-        )
+        parts.append(f"Surrounding context: {surrounding_text}")
 
-    return " ".join(description_parts).strip()
+    desc = " ".join(parts).strip()
+    return desc if len(desc) > 40 else None
 
 
-def ingest_multimodal_pdf(pdf_path: str):
+# ---------------- MAIN ----------------
+
+def ingest_multimodal_pdf(pdf_path: str, session_id: str):
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(pdf_path)
 
@@ -65,13 +59,14 @@ def ingest_multimodal_pdf(pdf_path: str):
     texts: List[str] = []
     metadatas: List[Metadata] = []
 
-    prev_text_buffer = ""
+    prev_text: Optional[str] = None
 
     for el in elements:
 
-        if isinstance(el, (NarrativeText, Title)):
+        # -------- TEXT --------
+        if isinstance(el, (NarrativeText, Title)) and el.text:
             text = el.text.strip()
-            if len(text) < 50:
+            if len(text) < 80:
                 continue
 
             texts.append(text)
@@ -80,12 +75,12 @@ def ingest_multimodal_pdf(pdf_path: str):
                 "page": int(el.metadata.page_number or 0),
                 "type": "text",
             })
+            prev_text = text
 
-            prev_text_buffer = text
-
+        # -------- TABLE --------
         elif isinstance(el, Table):
             table_text = _linearize_table(el)
-            if not table_text or len(table_text) < 50:
+            if len(table_text) < 80:
                 continue
 
             texts.append(f"Table: {table_text}")
@@ -94,34 +89,31 @@ def ingest_multimodal_pdf(pdf_path: str):
                 "page": int(el.metadata.page_number or 0),
                 "type": "table",
             })
+            prev_text = table_text
 
-            prev_text_buffer = table_text
-
+        # -------- IMAGE --------
         elif isinstance(el, UnstructuredImage):
-            image_description = _describe_image(
-                el,
-                surrounding_text=prev_text_buffer
-            )
-
-            if not image_description:
+            desc = _describe_image(el, prev_text)
+            if not desc:
                 continue
 
-            texts.append(f"Image description: {image_description}")
+            texts.append(f"Image context: {desc}")
             metadatas.append({
                 "source": os.path.basename(pdf_path),
                 "page": int(el.metadata.page_number or 0),
                 "type": "image",
             })
-
-            prev_text_buffer = ""
+            prev_text = None
 
     if not texts:
-        print("No usable elements extracted.")
+        print("⚠️ No usable content extracted")
         return
 
-    embeddings = embed_texts(texts)
+    assert len(texts) == len(metadatas)
 
-    collection = get_collection()
+    embeddings = embed_texts(texts)
+    collection = get_collection(session_id)
+
     ids = [f"{os.path.basename(pdf_path)}_{i}" for i in range(len(texts))]
 
     collection.add(
@@ -131,4 +123,4 @@ def ingest_multimodal_pdf(pdf_path: str):
         metadatas=metadatas,
     )
 
-    print(f"Ingested {len(texts)} multimodal elements from {pdf_path}")
+    print(f"✅ Ingested {len(texts)} chunks for session {session_id}")

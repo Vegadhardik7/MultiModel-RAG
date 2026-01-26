@@ -38,6 +38,11 @@
             padding: 8px 14px;
             cursor: pointer;
         }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
     </style>
 </head>
 
@@ -58,39 +63,27 @@
 <h3>Chat</h3>
 <div id="chat"></div>
 
-<input type="text" id="questionInput" placeholder="Ask a question..." disabled />
+<input
+    type="text"
+    id="questionInput"
+    placeholder="Ask a question..."
+    disabled
+/>
 <button id="sendBtn" disabled>Send</button>
 
 <script>
+/* -----------------------------
+   STATE
+------------------------------*/
+let currentSessionId = null;
+
 const chatDiv = document.getElementById("chat");
 const uploadStatus = document.getElementById("uploadStatus");
 const questionInput = document.getElementById("questionInput");
 const sendBtn = document.getElementById("sendBtn");
 
-let currentSessionId = null;
-
 /* -----------------------------
-   START NEW CHAT SESSION
-------------------------------*/
-async function startNewChat() {
-    try {
-        const res = await fetch("/chat/new", { method: "POST" });
-        const data = await res.json();
-
-        currentSessionId = data.session_id;
-        chatDiv.innerHTML = "";
-
-        questionInput.disabled = false;
-        sendBtn.disabled = false;
-    } catch (err) {
-        alert("Failed to initialize chat session.");
-    }
-}
-
-window.onload = startNewChat;
-
-/* -----------------------------
-   UPLOAD PDF
+   UPLOAD PDF → CREATE SESSION
 ------------------------------*/
 document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -102,29 +95,52 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     formData.append("file", fileInput.files[0]);
 
     uploadStatus.innerText = "Uploading and processing PDF...";
+    sendBtn.disabled = true;
+    questionInput.disabled = true;
 
-    const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-    });
+    try {
+        const res = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
 
-    const data = await res.json();
-    uploadStatus.innerText = data.message || "Upload failed.";
+        const data = await res.json();
+
+        if (!res.ok) {
+            uploadStatus.innerText = data.detail || "Upload failed";
+            return;
+        }
+
+        // ✅ THIS IS THE MOST IMPORTANT LINE
+        currentSessionId = data.session_id;
+
+        uploadStatus.innerText = `Loaded: ${data.session_name || "PDF"}`;
+
+        // ✅ Reset UI for new session
+        chatDiv.innerHTML = "";
+        questionInput.value = "";
+        questionInput.disabled = false;
+        sendBtn.disabled = false;
+        questionInput.focus();
+
+    } catch (err) {
+        uploadStatus.innerText = "Server error during upload.";
+    }
 });
 
 /* -----------------------------
-   STREAMING CHAT
+   SEND MESSAGE (STREAMING)
 ------------------------------*/
-sendBtn.onclick = sendQuestion;
+sendBtn.addEventListener("click", sendQuestion);
 
 async function sendQuestion() {
     const question = questionInput.value.trim();
     if (!question || !currentSessionId) return;
 
-    // Show user message
+    // User message
     chatDiv.innerHTML += `<p class="user"><b>You:</b> ${question}</p>`;
 
-    // Bot container
+    // Bot placeholder
     const botPara = document.createElement("p");
     botPara.className = "bot";
     botPara.innerHTML = "<b>ForgeRAG:</b> ";
@@ -134,36 +150,39 @@ async function sendQuestion() {
     questionInput.disabled = true;
     sendBtn.disabled = true;
 
-    const response = await fetch("/chat/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            session_id: currentSessionId,
-            question: question
-        })
-    });
+    try {
+        const response = await fetch("/chat/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                session_id: currentSessionId,
+                question: question
+            })
+        });
 
-    if (!response.ok) {
-        botPara.innerHTML += "Error contacting server.";
+        if (!response.ok) {
+            botPara.innerHTML += "Server error.";
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            botPara.innerHTML += decoder.decode(value);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
+    } catch (err) {
+        botPara.innerHTML += "Connection error.";
+    } finally {
         questionInput.disabled = false;
         sendBtn.disabled = false;
-        return;
+        questionInput.focus();
     }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        botPara.innerHTML += chunk;   // ✅ THIS WAS MISSING BEFORE
-        chatDiv.scrollTop = chatDiv.scrollHeight;
-    }
-
-    questionInput.disabled = false;
-    sendBtn.disabled = false;
 }
 </script>
 

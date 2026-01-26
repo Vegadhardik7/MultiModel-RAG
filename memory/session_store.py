@@ -55,3 +55,12 @@ class SessionStore:
             "SELECT session_id, created_at, updated_at FROM sessions ORDER BY updated_at DESC"
         )
         return [dict(row) for row in cur.fetchall()]
+
+    def delete_session(self, session_id: str) -> bool:
+        cur = self.conn.execute(
+            "DELETE FROM sessions WHERE session_id=?",
+            (session_id,)
+        )
+        self.conn.commit()
+        # sqlite3.Cursor.rowcount may be -1 for some statements; fetch to confirm
+        return cur.rowcount != 0
