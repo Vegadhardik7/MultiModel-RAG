@@ -1,190 +1,1361 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <title>ForgeRAG</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-
-        #chat {
-            border: 1px solid #ccc;
-            padding: 15px;
-            height: 380px;
-            overflow-y: auto;
-            margin-bottom: 10px;
-            background: #fafafa;
-        }
-
-        .user {
-            color: #1a73e8;
-            margin-bottom: 6px;
-        }
-
-        .bot {
-            color: #188038;
-            margin-bottom: 14px;
-        }
-
-        input[type="text"] {
-            width: 78%;
-            padding: 8px;
-        }
-
-        button {
-            padding: 8px 14px;
-            cursor: pointer;
-        }
-
-        button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ForgeRAG — Intelligent Document Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+--bg-primary: #0a0a0a;
+--bg-secondary: #121212;
+--bg-tertiary: #1a1a1a;
+--border-color: #2d2d2d;
+--text-primary: #f0f0f0;
+--text-secondary: #a0a0a0;
+--accent-primary: #f5c842;
+--accent-secondary: #f0d86b;
+--accent-hover: #f8d665;
+--user-msg-bg: #1a2c42;
+--user-msg-border: #2c4e70;
+--ai-msg-bg: #1e1a15;
+--ai-msg-border: #3a3228;
+--success: #4ade80;
+--warning: #fbbf24;
+--danger: #f87171;
+--shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
+--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+--border-radius-sm: 6px;
+--border-radius-md: 10px;
+--border-radius-lg: 16px;
+--transition-fast: all 0.15s ease;
+--transition-normal: all 0.25s ease;
+--transition-slow: all 0.4s ease;
+}
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+html {
+scroll-behavior: smooth;
+font-size: 16px;
+}
+body {
+font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+background: var(--bg-primary);
+color: var(--text-primary);
+line-height: 1.5;
+height: 100vh;
+overflow: hidden;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+.app-container {
+display: flex;
+height: 100vh;
+max-width: 100vw;
+overflow: hidden;
+}
+/* Sidebar Styles */
+.sidebar {
+width: 320px;
+background: var(--bg-secondary);
+border-right: 1px solid var(--border-color);
+display: flex;
+flex-direction: column;
+transition: var(--transition-normal);
+overflow-y: auto;
+scrollbar-width: thin;
+scrollbar-color: var(--border-color) transparent;
+}
+.sidebar::-webkit-scrollbar {
+width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+background-color: var(--border-color);
+border-radius: 3px;
+}
+.sidebar-header {
+padding: 24px 20px 16px;
+border-bottom: 1px solid var(--border-color);
+}
+.brand {
+display: flex;
+align-items: center;
+gap: 12px;
+margin-bottom: 8px;
+}
+.brand-icon {
+background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+width: 36px;
+height: 36px;
+border-radius: 10px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-weight: 800;
+color: var(--bg-primary);
+flex-shrink: 0;
+}
+.brand-name {
+font-size: 1.5rem;
+font-weight: 800;
+background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+}
+.brand-description {
+color: var(--text-secondary);
+font-size: 0.875rem;
+line-height: 1.5;
+margin-top: 4px;
+}
+.sidebar-section {
+padding: 20px;
+border-bottom: 1px solid var(--border-color);
+}
+.section-title {
+font-size: 0.875rem;
+font-weight: 600;
+color: var(--accent-secondary);
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-bottom: 14px;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.section-title::before {
+content: '';
+display: inline-block;
+width: 4px;
+height: 16px;
+background: var(--accent-primary);
+border-radius: 2px;
+}
+.upload-container {
+display: flex;
+flex-direction: column;
+gap: 16px;
+}
+.file-input-container {
+position: relative;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+.file-input-label {
+display: flex;
+align-items: center;
+gap: 10px;
+padding: 12px 16px;
+background: var(--bg-tertiary);
+border: 1px dashed var(--border-color);
+border-radius: var(--border-radius-md);
+cursor: pointer;
+transition: var(--transition-fast);
+font-size: 0.95rem;
+}
+.file-input-label:hover {
+border-color: var(--accent-primary);
+background: rgba(245, 200, 66, 0.05);
+}
+.file-input-label svg {
+width: 20px;
+height: 20px;
+color: var(--accent-primary);
+}
+.file-input {
+position: absolute;
+opacity: 0;
+width: 100%;
+height: 100%;
+top: 0;
+left: 0;
+cursor: pointer;
+}
+.file-name {
+font-size: 0.875rem;
+color: var(--text-secondary);
+margin-top: 4px;
+word-break: break-all;
+min-height: 1.5rem;
+}
+.upload-button-container {
+display: none;
+margin-top: 8px;
+}
+.upload-status {
+padding: 12px;
+background: var(--bg-tertiary);
+border-radius: var(--border-radius-sm);
+font-size: 0.875rem;
+color: var(--text-secondary);
+min-height: 2rem;
+border: 1px solid var(--border-color);
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.status-loading {
+color: var(--accent-primary);
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.status-success {
+color: var(--success);
+}
+.status-error {
+color: var(--danger);
+}
+.processing-spinner {
+display: inline-block;
+width: 16px;
+height: 16px;
+border: 2px solid rgba(245, 200, 66, 0.2);
+border-radius: 50%;
+border-top-color: var(--accent-primary);
+animation: spin 1s linear infinite;
+margin-right: 8px;
+}
+.sessions-container {
+display: flex;
+flex-direction: column;
+gap: 12px;
+}
+.no-sessions {
+text-align: center;
+padding: 24px 12px;
+color: var(--text-secondary);
+font-style: italic;
+font-size: 0.9rem;
+}
+.session-item {
+background: var(--bg-tertiary);
+border: 1px solid var(--border-color);
+border-radius: var(--border-radius-md);
+padding: 14px;
+cursor: pointer;
+transition: var(--transition-fast);
+display: flex;
+flex-direction: column;
+gap: 8px;
+position: relative;
+overflow: hidden;
+}
+.session-item::before {
+content: '';
+position: absolute;
+top: 0;
+left: 0;
+width: 4px;
+height: 100%;
+background: transparent;
+transition: var(--transition-fast);
+}
+.session-item:hover {
+border-color: var(--accent-primary);
+transform: translateX(2px);
+}
+.session-item:hover::before {
+background: var(--accent-primary);
+}
+.session-item.active {
+border-color: var(--accent-primary);
+background: rgba(245, 200, 66, 0.05);
+}
+.session-item.active::before {
+background: var(--accent-primary);
+}
+.session-header {
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+gap: 12px;
+}
+.session-title {
+font-weight: 600;
+font-size: 1.05rem;
+display: -webkit-box;
+-webkit-line-clamp: 1;
+line-clamp: 1;
+-webkit-box-orient: vertical;
+overflow: hidden;
+flex: 1;
+}
+.session-date {
+font-size: 0.8rem;
+color: var(--text-secondary);
+white-space: nowrap;
+flex-shrink: 0;
+}
+.session-actions {
+display: flex;
+gap: 8px;
+margin-top: 4px;
+justify-content: flex-end;
+}
+.action-btn {
+padding: 6px 12px;
+border-radius: var(--border-radius-sm);
+font-size: 0.85rem;
+font-weight: 500;
+cursor: pointer;
+border: none;
+display: flex;
+align-items: center;
+gap: 6px;
+transition: var(--transition-fast);
+flex-shrink: 0;
+}
+.action-btn.open {
+background: rgba(245, 200, 66, 0.15);
+color: var(--accent-primary);
+}
+.action-btn.open:hover {
+background: rgba(245, 200, 66, 0.25);
+}
+.action-btn.delete {
+background: rgba(248, 113, 113, 0.15);
+color: var(--danger);
+}
+.action-btn.delete:hover {
+background: rgba(248, 113, 113, 0.25);
+}
+.action-btn svg {
+width: 16px;
+height: 16px;
+}
+.refresh-container {
+padding: 16px 20px;
+display: flex;
+justify-content: center;
+}
+/* Main Content Styles */
+.main-content {
+flex: 1;
+display: flex;
+flex-direction: column;
+overflow: hidden;
+}
+.chat-header {
+padding: 20px;
+border-bottom: 1px solid var(--border-color);
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: var(--bg-secondary);
+}
+.chat-title {
+font-size: 1.25rem;
+font-weight: 700;
+}
+.active-session {
+color: var(--text-secondary);
+font-size: 0.95rem;
+margin-top: 4px;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.active-session::before {
+content: '';
+display: inline-block;
+width: 8px;
+height: 8px;
+background: var(--success);
+border-radius: 50%;
+}
+.header-actions {
+display: flex;
+gap: 10px;
+}
+.control-btn {
+width: 40px;
+height: 40px;
+border-radius: 50%;
+background: var(--bg-tertiary);
+border: 1px solid var(--border-color);
+display: flex;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+transition: var(--transition-fast);
+color: var(--text-secondary);
+}
+.control-btn:hover {
+background: var(--accent-primary);
+color: var(--bg-primary);
+border-color: transparent;
+transform: scale(1.05);
+}
+.control-btn svg {
+width: 20px;
+height: 20px;
+stroke-width: 1.8;
+}
+.chat-container {
+flex: 1;
+display: flex;
+flex-direction: column;
+overflow: hidden;
+padding: 0 20px;
+position: relative;
+}
+.messages-container {
+flex: 1;
+overflow-y: auto;
+padding: 20px 0;
+display: flex;
+flex-direction: column;
+gap: 24px;
+scrollbar-width: thin;
+scrollbar-color: var(--border-color) transparent;
+}
+.messages-container::-webkit-scrollbar {
+width: 6px;
+}
+.messages-container::-webkit-scrollbar-track {
+background: transparent;
+}
+.messages-container::-webkit-scrollbar-thumb {
+background-color: var(--border-color);
+border-radius: 3px;
+}
+.message {
+max-width: 85%;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+.message.user {
+align-self: flex-end;
+}
+.message.assistant {
+align-self: flex-start;
+}
+.message-header {
+display: flex;
+align-items: center;
+gap: 8px;
+font-weight: 600;
+font-size: 0.95rem;
+}
+.message.user .message-header {
+color: #6da7fb;
+justify-content: flex-end;
+}
+.message.assistant .message-header {
+color: var(--accent-primary);
+}
+.message-content {
+padding: 16px;
+border-radius: var(--border-radius-md);
+line-height: 1.6;
+font-size: 1.02rem;
+position: relative;
+word-break: break-word;
+}
+.message.user .message-content {
+background: var(--user-msg-bg);
+border: 1px solid var(--user-msg-border);
+border-bottom-right-radius: 4px;
+}
+.message.assistant .message-content {
+background: var(--ai-msg-bg);
+border: 1px solid var(--ai-msg-border);
+border-bottom-left-radius: 4px;
+}
+.input-container {
+padding: 20px 0 24px;
+position: relative;
+border-top: 1px solid var(--border-color);
+}
+.input-box {
+display: flex;
+gap: 12px;
+align-items: flex-end;
+}
+.message-input {
+flex: 1;
+padding: 16px 20px;
+background: var(--bg-tertiary);
+border: 1px solid var(--border-color);
+border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+color: var(--text-primary);
+font-family: inherit;
+font-size: 1.05rem;
+resize: none;
+min-height: 56px;
+max-height: 200px;
+transition: var(--transition-fast);
+line-height: 1.5;
+}
+.message-input:focus {
+outline: none;
+border-color: var(--accent-primary);
+box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.2);
+}
+.message-input::placeholder {
+color: var(--text-secondary);
+opacity: 0.7;
+}
+.send-btn {
+background: var(--accent-primary);
+color: var(--bg-primary);
+border: none;
+width: 72px;
+height: 56px;
+border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+font-weight: 600;
+font-size: 1.05rem;
+cursor: pointer;
+transition: var(--transition-normal);
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+}
+.send-btn:hover {
+background: var(--accent-hover);
+transform: translateY(-1px);
+}
+.send-btn:active {
+transform: translateY(0);
+}
+.send-btn:disabled {
+opacity: 0.6;
+cursor: not-allowed;
+transform: none;
+}
+.input-hint {
+color: var(--text-secondary);
+font-size: 0.85rem;
+margin-top: 8px;
+text-align: center;
+font-style: italic;
+}
+.welcome-screen {
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+text-align: center;
+height: 100%;
+padding: 0 40px;
+color: var(--text-secondary);
+}
+.welcome-icon {
+font-size: 4rem;
+margin-bottom: 24px;
+background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+}
+.welcome-title {
+font-size: 2.2rem;
+font-weight: 800;
+margin-bottom: 16px;
+background: linear-gradient(to right, var(--text-primary), var(--accent-secondary));
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+}
+.welcome-description {
+font-size: 1.15rem;
+max-width: 600px;
+line-height: 1.6;
+margin-bottom: 32px;
+color: var(--text-primary);
+}
+.welcome-instructions {
+background: var(--bg-tertiary);
+border: 1px solid var(--border-color);
+border-radius: var(--border-radius-md);
+padding: 24px;
+max-width: 600px;
+text-align: left;
+}
+.instructions-title {
+font-size: 1.25rem;
+margin-bottom: 16px;
+color: var(--accent-secondary);
+}
+.instructions-list {
+list-style: none;
+text-align: left;
+padding-left: 12px;
+}
+.instructions-list li {
+padding: 8px 0 8px 28px;
+position: relative;
+line-height: 1.6;
+}
+.instructions-list li::before {
+content: '✓';
+position: absolute;
+left: 0;
+color: var(--accent-primary);
+font-weight: bold;
+}
+/* Responsive Design */
+@media (max-width: 900px) {
+.sidebar {
+position: fixed;
+left: -320px;
+height: 100vh;
+z-index: 100;
+box-shadow: var(--shadow-md);
+}
+.sidebar.open {
+left: 0;
+}
+.main-content {
+width: 100%;
+}
+.menu-toggle {
+display: block;
+position: absolute;
+top: 16px;
+left: 16px;
+z-index: 101;
+}
+}
+@media (max-width: 600px) {
+.message {
+max-width: 95%;
+}
+.brand-name {
+font-size: 1.3rem;
+}
+.welcome-title {
+font-size: 1.8rem;
+}
+.welcome-description {
+font-size: 1rem;
+}
+}
+/* Animations */
+@keyframes pulse {
+0% { opacity: 0.4; }
+50% { opacity: 1; }
+100% { opacity: 0.4; }
+}
+.typing-indicator {
+display: inline-block;
+width: 8px;
+height: 8px;
+background: var(--accent-primary);
+border-radius: 50%;
+margin: 0 2px;
+animation: pulse 1.5s infinite;
+}
+.typing-indicator:nth-child(2) {
+animation-delay: 0.2s;
+}
+.typing-indicator:nth-child(3) {
+animation-delay: 0.4s;
+}
+.fade-in {
+animation: fadeIn 0.3s ease forwards;
+}
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(10px); }
+to { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+</style>
 </head>
-
 <body>
-
-<h2>ForgeRAG</h2>
-
-<h3>Upload PDF</h3>
-<form id="uploadForm">
-    <input type="file" id="pdfFile" accept=".pdf" required />
-    <button type="submit">Upload</button>
-</form>
-
-<p id="uploadStatus"></p>
-
-<hr>
-
-<h3>Chat</h3>
-<div id="chat"></div>
-
-<input
-    type="text"
-    id="questionInput"
-    placeholder="Ask a question..."
-    disabled
-/>
-<button id="sendBtn" disabled>Send</button>
+<div class="app-container">
+<!-- Sidebar -->
+<aside class="sidebar">
+<div class="sidebar-header">
+<div class="brand">
+<div class="brand-icon">F</div>
+<h1 class="brand-name">ForgeRAG</h1>
+</div>
+<div class="brand-description">
+Intelligent document assistant for text, tables, and image analysis
+</div>
+</div>
+<div class="sidebar-section">
+<h2 class="section-title">Upload Document</h2>
+<div class="upload-container">
+<div class="file-input-container">
+<label class="file-input-label" for="pdfFile">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+</svg>
+<span>Choose PDF file</span>
+</label>
+<input type="file" id="pdfFile" class="file-input" accept=".pdf">
+<div class="file-name" id="fileName">No file selected</div>
+</div>
+<div class="upload-button-container" id="uploadButtonContainer">
+<button class="action-btn open" id="uploadBtn" style="width: 100%; justify-content: center;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+</svg>
+Upload Document
+</button>
+</div>
+<div class="upload-status" id="uploadStatus">Upload a PDF to create a session</div>
+</div>
+</div>
+<div class="sidebar-section">
+<h2 class="section-title">Active Sessions</h2>
+<div class="sessions-container" id="sessionList">
+<div class="no-sessions">
+<p>No sessions yet. Upload a PDF to get started.</p>
+</div>
+</div>
+</div>
+<div class="refresh-container">
+<button class="action-btn open" id="refreshSessions">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+</svg>
+Refresh Sessions
+</button>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="main-content">
+<header class="chat-header">
+<div>
+<h1 class="chat-title">Document Assistant</h1>
+<div class="active-session" id="activeSessionName">No session selected</div>
+</div>
+<div class="header-actions">
+<button class="control-btn" id="downloadChat" title="Export chat history">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+</svg>
+</button>
+<button class="control-btn" id="clearChat" title="Clear chat">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+</svg>
+</button>
+</div>
+</header>
+<div class="chat-container">
+<div class="welcome-screen" id="welcomeScreen">
+<div class="welcome-icon">🧠</div>
+<h1 class="welcome-title">ForgeRAG Assistant</h1>
+<p class="welcome-description">
+Upload a PDF document to start analyzing text, tables, and images with our intelligent AI assistant.
+</p>
+<div class="welcome-instructions">
+<h2 class="instructions-title">How to get started:</h2>
+<ul class="instructions-list">
+<li>Upload a PDF document using the sidebar</li>
+<li>Select an existing session or create a new one</li>
+<li>Ask questions about the document content</li>
+<li>Get answers with context from text, tables, and images</li>
+</ul>
+</div>
+</div>
+<div class="messages-container" id="chat" style="display: none;">
+<!-- Messages will be inserted here dynamically -->
+</div>
+<div class="input-container">
+<div class="input-box">
+<textarea id="questionInput" class="message-input" placeholder="Ask something about your document..." disabled rows="1"></textarea>
+<button id="sendBtn" class="send-btn" disabled>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+</svg>
+</button>
+</div>
+<div class="input-hint">
+Press <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line
+</div>
+</div>
+</div>
+</main>
+</div>
 
 <script>
-/* -----------------------------
-   STATE
-------------------------------*/
+// DOM Elements
+const pdfFileInput = document.getElementById('pdfFile');
+const fileNameEl = document.getElementById('fileName');
+const uploadStatusEl = document.getElementById('uploadStatus');
+const uploadButtonContainer = document.getElementById('uploadButtonContainer');
+const uploadBtn = document.getElementById('uploadBtn');
+const sessionListEl = document.getElementById('sessionList');
+const welcomeScreenEl = document.getElementById('welcomeScreen');
+const chatEl = document.getElementById('chat');
+const activeSessionNameEl = document.getElementById('activeSessionName');
+const questionInput = document.getElementById('questionInput');
+const sendBtn = document.getElementById('sendBtn');
+const refreshBtn = document.getElementById('refreshSessions');
+const clearChatBtn = document.getElementById('clearChat');
+const downloadBtn = document.getElementById('downloadChat');
+
+// State
 let currentSessionId = null;
+let currentSessionName = null;
+let isProcessing = false;
+let sessions = []; // Store sessions locally
+let chatHistory = {}; // Store chat history locally: {sessionId: [{role, content, timestamp}]}
 
-const chatDiv = document.getElementById("chat");
-const uploadStatus = document.getElementById("uploadStatus");
-const questionInput = document.getElementById("questionInput");
-const sendBtn = document.getElementById("sendBtn");
-
-/* -----------------------------
-   UPLOAD PDF → CREATE SESSION
-------------------------------*/
-document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const fileInput = document.getElementById("pdfFile");
-    if (!fileInput.files.length) return;
-
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
-
-    uploadStatus.innerText = "Uploading and processing PDF...";
-    sendBtn.disabled = true;
-    questionInput.disabled = true;
-
-    try {
-        const res = await fetch("/upload", {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-            uploadStatus.innerText = data.detail || "Upload failed";
-            return;
-        }
-
-        // ✅ THIS IS THE MOST IMPORTANT LINE
-        currentSessionId = data.session_id;
-
-        uploadStatus.innerText = `Loaded: ${data.session_name || "PDF"}`;
-
-        // ✅ Reset UI for new session
-        chatDiv.innerHTML = "";
-        questionInput.value = "";
-        questionInput.disabled = false;
-        sendBtn.disabled = false;
-        questionInput.focus();
-
-    } catch (err) {
-        uploadStatus.innerText = "Server error during upload.";
-    }
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  setupEventListeners();
+  loadSessionsFromLocalStorage();
+  setupTextareaAutoResize();
 });
 
-/* -----------------------------
-   SEND MESSAGE (STREAMING)
-------------------------------*/
-sendBtn.addEventListener("click", sendQuestion);
+function setupEventListeners() {
+  pdfFileInput.addEventListener('change', handleFileSelection);
+  uploadBtn.addEventListener('click', handleUpload);
+  sendBtn.addEventListener('click', sendMessage);
+  questionInput.addEventListener('keydown', handleKeyDown);
+  refreshBtn.addEventListener('click', loadSessionsFromLocalStorage);
+  clearChatBtn.addEventListener('click', clearChat);
+  downloadBtn.addEventListener('click', exportChat);
+}
 
-async function sendQuestion() {
-    const question = questionInput.value.trim();
-    if (!question || !currentSessionId) return;
+function setupTextareaAutoResize() {
+  questionInput.addEventListener('input', () => {
+    questionInput.style.height = 'auto';
+    questionInput.style.height = (questionInput.scrollHeight) + 'px';
+  });
+}
 
-    // User message
-    chatDiv.innerHTML += `<p class="user"><b>You:</b> ${question}</p>`;
+function handleFileSelection(e) {
+  const file = e.target.files[0];
+  if (file) {
+    if (file.size > 50 * 1024 * 1024) {
+      showStatus(`File too large (max 50MB)`, true);
+      pdfFileInput.value = '';
+      fileNameEl.textContent = 'No file selected';
+      uploadButtonContainer.style.display = 'none';
+      return;
+    }
+    
+    fileNameEl.textContent = file.name;
+    showStatus(`Ready to upload: ${file.name}`, false, true);
+    uploadButtonContainer.style.display = 'block';
+  } else {
+    fileNameEl.textContent = 'No file selected';
+    uploadButtonContainer.style.display = 'none';
+  }
+}
 
-    // Bot placeholder
-    const botPara = document.createElement("p");
-    botPara.className = "bot";
-    botPara.innerHTML = "<b>ForgeRAG:</b> ";
-    chatDiv.appendChild(botPara);
+function showStatus(message, isError = false, isSuccess = false) {
+  uploadStatusEl.innerHTML = message;
+  uploadStatusEl.className = 'upload-status';
+  
+  if (isError) {
+    uploadStatusEl.classList.add('status-error');
+    uploadStatusEl.innerHTML = `<span style="color: var(--danger)">⚠️</span> ${message}`;
+  } else if (isSuccess) {
+    uploadStatusEl.classList.add('status-success');
+    uploadStatusEl.innerHTML = `<span style="color: var(--success)">✓</span> ${message}`;
+  } else {
+    uploadStatusEl.classList.add('status-loading');
+  }
+}
 
-    questionInput.value = "";
+async function handleUpload() {
+  const file = pdfFileInput.files[0];
+  if (!file) {
+    showStatus('Please select a PDF file first', true);
+    return;
+  }
+
+  if (isProcessing) return;
+  
+  showStatus('<span class="processing-spinner"></span> Processing PDF file...', false);
+  uploadBtn.disabled = true;
+  pdfFileInput.disabled = true;
+  
+  isProcessing = true;
+  
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.detail || 'Upload failed');
+    }
+
+    showStatus(`✓ Done processing PDF file! Session created successfully.`, false, true);
+    
+    // Reset UI
+    pdfFileInput.value = '';
+    fileNameEl.textContent = 'No file selected';
+    uploadButtonContainer.style.display = 'none';
+    
+    // Add new session to local storage
+    const session = {
+      session_id: result.session_id,
+      name: file.name.replace(/\.[^.]+$/, ''),
+      created_at: new Date().toISOString(),
+      file_name: file.name
+    };
+    
+    sessions.push(session);
+    saveSessionsToLocalStorage();
+    
+    // Initialize empty chat history for this session
+    if (!chatHistory[result.session_id]) {
+      chatHistory[result.session_id] = [];
+    }
+    saveChatHistoryToLocalStorage();
+    
+    // Select the new session
+    selectSession(result.session_id, session.name);
+    
+    // Reload sessions list
+    renderSessionsList();
+    
+  } catch (error) {
+    console.error('Upload error:', error);
+    showStatus(`Error: ${error.message || 'Failed to process document'}`, true);
+  } finally {
+    isProcessing = false;
+    uploadBtn.disabled = false;
+    pdfFileInput.disabled = false;
+    
+    if (uploadStatusEl.classList.contains('status-success')) {
+      setTimeout(() => {
+        if (uploadStatusEl.classList.contains('status-success')) {
+          showStatus('Upload a PDF to create a session');
+        }
+      }, 5000);
+    }
+  }
+}
+
+function loadSessionsFromLocalStorage() {
+  try {
+    // Load sessions from localStorage
+    const savedSessions = localStorage.getItem('forgeRAG_sessions');
+    sessions = savedSessions ? JSON.parse(savedSessions) : [];
+    
+    // Load chat history from localStorage
+    const savedHistory = localStorage.getItem('forgeRAG_chat_history');
+    chatHistory = savedHistory ? JSON.parse(savedHistory) : {};
+    
+    renderSessionsList();
+  } catch (error) {
+    console.error('Error loading from localStorage:', error);
+    sessions = [];
+    chatHistory = {};
+    renderSessionsList();
+  }
+}
+
+function saveSessionsToLocalStorage() {
+  try {
+    localStorage.setItem('forgeRAG_sessions', JSON.stringify(sessions));
+  } catch (error) {
+    console.error('Error saving sessions:', error);
+  }
+}
+
+function saveChatHistoryToLocalStorage() {
+  try {
+    localStorage.setItem('forgeRAG_chat_history', JSON.stringify(chatHistory));
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+  }
+}
+
+function renderSessionsList() {
+  if (!sessions || sessions.length === 0) {
+    sessionListEl.innerHTML = `
+      <div class="no-sessions">
+        <p>No sessions found. Upload a PDF to create your first session.</p>
+      </div>
+    `;
+    return;
+  }
+
+  sessionListEl.innerHTML = '';
+  
+  sessions.forEach(session => {
+    const sessionEl = document.createElement('div');
+    sessionEl.className = `session-item ${session.session_id === currentSessionId ? 'active' : ''}`;
+    sessionEl.dataset.sessionId = session.session_id;
+    
+    sessionEl.innerHTML = `
+      <div class="session-header">
+        <div class="session-title">${escapeHtml(session.name)}</div>
+        <div class="session-date">${formatDate(session.created_at)}</div>
+      </div>
+      <div class="session-actions">
+        <button class="action-btn open" data-session-id="${session.session_id}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+          </svg>
+          Open
+        </button>
+        <button class="action-btn delete" data-session-id="${session.session_id}">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+          Delete
+        </button>
+      </div>
+    `;
+    
+    sessionEl.addEventListener('click', () => selectSession(session.session_id, session.name));
+    sessionListEl.appendChild(sessionEl);
+  });
+
+  // Add event listeners to action buttons
+  document.querySelectorAll('.action-btn.open').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sessionId = btn.dataset.sessionId;
+      const session = sessions.find(s => s.session_id === sessionId);
+      if (session) selectSession(sessionId, session.name);
+    });
+  });
+
+  document.querySelectorAll('.action-btn.delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteSession(btn.dataset.sessionId);
+    });
+  });
+}
+
+function selectSession(sessionId, sessionName) {
+  if (!sessionId || sessionId === currentSessionId) return;
+  
+  currentSessionId = sessionId;
+  currentSessionName = sessionName || sessionId.slice(0, 8);
+  
+  // Update UI
+  setActiveSession(sessionId, sessionName);
+  
+  // Load chat history from local storage
+  const history = chatHistory[sessionId] || [];
+  renderChatHistory(history);
+}
+
+function setActiveSession(sessionId, sessionName) {
+  currentSessionId = sessionId;
+  currentSessionName = sessionName || sessionId.slice(0, 8);
+  
+  // Update active session display
+  activeSessionNameEl.innerHTML = `
+    <span style="color: #4ade80">●</span> Active: ${escapeHtml(currentSessionName)}
+  `;
+  
+  // Update session items active state
+  document.querySelectorAll('.session-item').forEach(item => {
+    const itemId = item.dataset.sessionId;
+    item.classList.toggle('active', itemId === sessionId);
+  });
+  
+  // Show chat interface
+  welcomeScreenEl.style.display = 'none';
+  chatEl.style.display = 'flex';
+  
+  // Enable input
+  questionInput.disabled = false;
+  sendBtn.disabled = false;
+  questionInput.focus();
+  
+  // Scroll to bottom
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function renderChatHistory(history) {
+  chatEl.innerHTML = '';
+  
+  if (!history || history.length === 0) {
+    showChatMessage('assistant', `Session "${currentSessionName}" loaded. How can I help you understand this document?`);
+    return;
+  }
+  
+  history.forEach(msg => {
+    showChatMessage(msg.role === 'assistant' ? 'assistant' : 'user', msg.content);
+  });
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'Unknown date';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (e) {
+    return dateString.slice(0, 10);
+  }
+}
+
+function escapeHtml(unsafe) {
+  if (typeof unsafe !== 'string') return '';
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showChatMessage(role, content) {
+  const messageEl = document.createElement('div');
+  messageEl.className = `message ${role} fade-in`;
+  
+  const isUser = role === 'user';
+  const senderName = isUser ? 'You' : 'ForgeRAG';
+  const senderColor = isUser ? '#6da7fb' : 'var(--accent-primary)';
+  
+  messageEl.innerHTML = `
+    <div class="message-header" style="color: ${senderColor}">
+      <span class="sender-name">${senderName}</span>
+      ${isUser ? '' : `<span class="timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>`}
+    </div>
+    <div class="message-content">${formatMessageContent(content)}</div>
+  `;
+  
+  chatEl.appendChild(messageEl);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function formatMessageContent(content) {
+  return content
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+async function sendMessage() {
+  const message = questionInput.value.trim();
+  if (!message || !currentSessionId || isProcessing) return;
+  
+  isProcessing = true;
+  questionInput.disabled = true;
+  sendBtn.disabled = true;
+  
+  // Add user message to UI and storage
+  showChatMessage('user', message);
+  
+  // Save user message to chat history
+  if (!chatHistory[currentSessionId]) {
+    chatHistory[currentSessionId] = [];
+  }
+  chatHistory[currentSessionId].push({
+    role: 'user',
+    content: message,
+    timestamp: new Date().toISOString()
+  });
+  saveChatHistoryToLocalStorage();
+  
+  questionInput.value = '';
+  questionInput.style.height = 'auto';
+  
+  // Show assistant typing indicator
+  const streamingId = 'stream_' + Date.now();
+  const assistantDiv = document.createElement('div');
+  assistantDiv.className = 'message assistant fade-in';
+  assistantDiv.id = streamingId;
+  assistantDiv.innerHTML = `
+    <div class="message-header" style="color: var(--accent-primary)">
+      <span class="sender-name">ForgeRAG</span>
+    </div>
+    <div class="message-content">
+      <div class="typing-indicator-container" style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-start;">
+        <div class="typing-indicator"></div>
+        <div class="typing-indicator"></div>
+        <div class="typing-indicator"></div>
+      </div>
+    </div>
+  `;
+  chatEl.appendChild(assistantDiv);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  
+  try {
+    const response = await fetch('/chat/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        session_id: currentSessionId,
+        question: message
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+    
+    // Process streaming response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullResponse = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      fullResponse += chunk;
+      
+      // Update the message content in real-time
+      const contentEl = document.getElementById(streamingId)?.querySelector('.message-content');
+      if (contentEl) {
+        // Remove typing indicator when we start getting content
+        const indicator = contentEl.querySelector('.typing-indicator-container');
+        if (indicator && fullResponse.trim() !== '') {
+          indicator.remove();
+        }
+        contentEl.innerHTML = formatMessageContent(fullResponse);
+      }
+      
+      // Keep chat scrolled to bottom
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+    
+    // Save assistant message to chat history
+    chatHistory[currentSessionId].push({
+      role: 'assistant',
+      content: fullResponse,
+      timestamp: new Date().toISOString()
+    });
+    saveChatHistoryToLocalStorage();
+    
+  } catch (error) {
+    console.error('Error sending message:', error);
+    const contentEl = document.getElementById(streamingId)?.querySelector('.message-content');
+    if (contentEl) {
+      contentEl.innerHTML = `Error: ${error.message || 'Failed to get response'}`;
+    }
+  } finally {
+    isProcessing = false;
+    questionInput.disabled = false;
+    sendBtn.disabled = false;
+    questionInput.focus();
+  }
+}
+
+function handleKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function clearChat() {
+  if (!currentSessionId) return;
+  
+  if (confirm('Clear the chat history for this session? This will not delete the document data.')) {
+    // Clear UI
+    chatEl.innerHTML = '';
+    
+    // Clear from storage but keep the session
+    chatHistory[currentSessionId] = [];
+    saveChatHistoryToLocalStorage();
+    
+    showChatMessage('assistant', `Chat cleared. How can I help you with "${currentSessionName}"?`);
+  }
+}
+
+function exportChat() {
+  if (!currentSessionId) {
+    alert('Please select a session first');
+    return;
+  }
+  
+  const history = chatHistory[currentSessionId] || [];
+  if (history.length === 0) {
+    alert('No chat history to export');
+    return;
+  }
+  
+  const exportData = {
+    session_id: currentSessionId,
+    session_name: currentSessionName,
+    export_date: new Date().toISOString(),
+    messages: history
+  };
+  
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+    type: 'application/json' 
+  });
+  
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chat-${currentSessionName.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 0);
+  
+  showStatus('Chat history exported successfully!', false, true);
+}
+
+function deleteSession(sessionId) {
+  if (!sessionId) return;
+  
+  const session = sessions.find(s => s.session_id === sessionId);
+  if (!session) return;
+  
+  if (!confirm(`Delete session "${session.name}"? This will remove the session from this browser but won't delete the document from the server.`)) {
+    return;
+  }
+  
+  // Remove session from sessions array
+  sessions = sessions.filter(s => s.session_id !== sessionId);
+  saveSessionsToLocalStorage();
+  
+  // Remove chat history
+  delete chatHistory[sessionId];
+  saveChatHistoryToLocalStorage();
+  
+  // If deleting current session, reset UI
+  if (sessionId === currentSessionId) {
+    currentSessionId = null;
+    currentSessionName = null;
+    activeSessionNameEl.innerHTML = 'No session selected';
+    chatEl.innerHTML = '';
+    welcomeScreenEl.style.display = 'flex';
+    chatEl.style.display = 'none';
     questionInput.disabled = true;
     sendBtn.disabled = true;
-
-    try {
-        const response = await fetch("/chat/stream", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                session_id: currentSessionId,
-                question: question
-            })
-        });
-
-        if (!response.ok) {
-            botPara.innerHTML += "Server error.";
-            return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-
-            botPara.innerHTML += decoder.decode(value);
-            chatDiv.scrollTop = chatDiv.scrollHeight;
-        }
-
-    } catch (err) {
-        botPara.innerHTML += "Connection error.";
-    } finally {
-        questionInput.disabled = false;
-        sendBtn.disabled = false;
-        questionInput.focus();
-    }
+  }
+  
+  // Reload sessions list
+  renderSessionsList();
+  showStatus(`Session "${session.name}" deleted`, false, true);
 }
 </script>
-
 </body>
 </html>

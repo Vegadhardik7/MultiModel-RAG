@@ -1,66 +1,145 @@
+# app/memory/session_store.py
+
 import sqlite3
 import json
-from typing import List, Dict
-from datetime import datetime
+import time
 from pathlib import Path
+from typing import List, Dict, Optional
 
-DB_PATH = Path(__file__).parent / "chat_sessions.db"
+# --------------------------------------------------
+# DATABASE PATH
+# --------------------------------------------------
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DB_PATH = BASE_DIR / "data" / "chat_sessions.db"
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# --------------------------------------------------
+# SINGLETON CONNECTION
+# --------------------------------------------------
+
+_CONN: Optional[sqlite3.Connection] = None
+
+
+def _get_connection() -> sqlite3.Connection:
+    global _CONN
+    if _CONN is None:
+        _CONN = sqlite3.connect(
+            str(DB_PATH),
+            check_same_thread=False
+        )
+        _CONN.row_factory = sqlite3.Row
+    return _CONN
+
+
+# --------------------------------------------------
+# SESSION STORE
+# --------------------------------------------------
 
 class SessionStore:
-    def __init__(self):
-        self.conn = sqlite3.connect(DB_PATH,check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self._create_table()
+    """
+    Persistent storage for chat sessions.
+    - One row per session
+    - History stored as JSON
+    """
 
-    def _create_table(self):
-        self.conn.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            session_id TEXT PRIMARY KEY,
-            history TEXT,
-            created_at TEXT,
-            updated_at TEXT
+    def __init__(self):
+        self.conn = _get_connection()
+        self._init_tables()
+
+    # --------------------------------------------------
+
+    def _init_tables(self):
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+                session_id TEXT PRIMARY KEY,
+                history TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+            """
         )
-        """)
         self.conn.commit()
 
-    def create_session(self, session_id: str):
-        now = datetime.utcnow().isoformat()
+    # --------------------------------------------------
+    # SESSION LIFECYCLE
+    # --------------------------------------------------
+
+    def create_session(self, session_id: str) -> None:
+        """
+        Create a session ONLY if it does not already exist.
+        Never overwrites existing history.
+        """
+        now = time.time()
+
         self.conn.execute(
-            "INSERT INTO sessions VALUES (?, ?, ?, ?)",
+            """
+            INSERT OR IGNORE INTO sessions
+            (session_id, history, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            """,
             (session_id, json.dumps([]), now, now)
         )
         self.conn.commit()
 
-    def load_history(self, session_id: str) -> List[Dict]:
+    # --------------------------------------------------
+
+    def delete_session(self, session_id: str) -> bool:
         cur = self.conn.execute(
-            "SELECT history FROM sessions WHERE session_id=?",
+            "DELETE FROM sessions WHERE session_id = ?",
+            (session_id,)
+        )
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    # --------------------------------------------------
+    # HISTORY
+    # --------------------------------------------------
+
+    def load_history(self, session_id: str) -> List[Dict]:
+        """
+        Load chat history for a session.
+        If session does not exist, returns empty list
+        WITHOUT creating or mutating anything.
+        """
+        cur = self.conn.execute(
+            "SELECT history FROM sessions WHERE session_id = ?",
             (session_id,)
         )
         row = cur.fetchone()
         if not row:
             return []
-        return json.loads(row["history"])
 
-    def save_history(self, session_id: str, history: List[Dict]):
-        now = datetime.utcnow().isoformat()
+        try:
+            return json.loads(row["history"])
+        except Exception:
+            return []
+
+    # --------------------------------------------------
+
+    def save_history(self, session_id: str, history: List[Dict]) -> None:
+        """
+        Persist full history for a session.
+        """
+        now = time.time()
+
         self.conn.execute(
-            "UPDATE sessions SET history=?, updated_at=? WHERE session_id=?",
+            """
+            UPDATE sessions
+            SET history = ?, updated_at = ?
+            WHERE session_id = ?
+            """,
             (json.dumps(history), now, session_id)
         )
         self.conn.commit()
 
-    def list_sessions(self):
-        cur = self.conn.execute(
-            "SELECT session_id, created_at, updated_at FROM sessions ORDER BY updated_at DESC"
-        )
-        return [dict(row) for row in cur.fetchall()]
+    # --------------------------------------------------
+    # DEBUG / ADMIN
+    # --------------------------------------------------
 
-    def delete_session(self, session_id: str) -> bool:
+    def list_sessions(self) -> List[str]:
         cur = self.conn.execute(
-            "DELETE FROM sessions WHERE session_id=?",
-            (session_id,)
+            "SELECT session_id FROM sessions ORDER BY created_at DESC"
         )
-        self.conn.commit()
-        # sqlite3.Cursor.rowcount may be -1 for some statements; fetch to confirm
-        return cur.rowcount != 0
+        return [row["session_id"] for row in cur.fetchall()]

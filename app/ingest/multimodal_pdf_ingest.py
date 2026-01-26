@@ -1,6 +1,6 @@
 # app/ingest/multimodal_pdf_ingest.py
-
 import os
+import uuid
 from typing import List, Optional
 from chromadb.api.types import Metadata
 
@@ -40,13 +40,11 @@ def _describe_image(
     if surrounding_text:
         parts.append(f"Surrounding context: {surrounding_text}")
 
-    desc = " ".join(parts).strip()
-    return desc if len(desc) > 40 else None
+    text = " ".join(parts).strip()
+    return text if len(text) > 40 else None
 
 
-# ---------------- MAIN ----------------
-
-def ingest_multimodal_pdf(pdf_path: str, session_id: str):
+def ingest_multimodal_pdf(pdf_path: str, session_id: str) -> None:
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(pdf_path)
 
@@ -58,12 +56,10 @@ def ingest_multimodal_pdf(pdf_path: str, session_id: str):
 
     texts: List[str] = []
     metadatas: List[Metadata] = []
-
     prev_text: Optional[str] = None
 
     for el in elements:
 
-        # -------- TEXT --------
         if isinstance(el, (NarrativeText, Title)) and el.text:
             text = el.text.strip()
             if len(text) < 80:
@@ -77,7 +73,6 @@ def ingest_multimodal_pdf(pdf_path: str, session_id: str):
             })
             prev_text = text
 
-        # -------- TABLE --------
         elif isinstance(el, Table):
             table_text = _linearize_table(el)
             if len(table_text) < 80:
@@ -91,7 +86,6 @@ def ingest_multimodal_pdf(pdf_path: str, session_id: str):
             })
             prev_text = table_text
 
-        # -------- IMAGE --------
         elif isinstance(el, UnstructuredImage):
             desc = _describe_image(el, prev_text)
             if not desc:
@@ -109,12 +103,11 @@ def ingest_multimodal_pdf(pdf_path: str, session_id: str):
         print("⚠️ No usable content extracted")
         return
 
-    assert len(texts) == len(metadatas)
-
     embeddings = embed_texts(texts)
     collection = get_collection(session_id)
 
-    ids = [f"{os.path.basename(pdf_path)}_{i}" for i in range(len(texts))]
+    # ✅ CRITICAL FIX: globally unique IDs
+    ids = [f"{session_id}_{uuid.uuid4().hex}" for _ in texts]
 
     collection.add(
         ids=ids,
