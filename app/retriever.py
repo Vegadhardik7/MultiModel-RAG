@@ -50,12 +50,18 @@ def retrieve(query: str, k: int = 5) -> List[Dict[str, Any]]:
 
     retrieved = []
     for doc, meta in zip(documents, metadatas):
-        retrieved.append({
+        item = ({
             "text": doc,
             "source": meta.get("source", "unknown"),
             "page": meta.get("page", "unknown"),
             "type": meta.get("type", "unknown"),
         })
+
+        # CRITICAL: preserve image path if present
+        if "image_path" in meta:
+            item["image_path"] = meta["image_path"]
+
+        retrieved.append(item)
 
     return retrieved
 

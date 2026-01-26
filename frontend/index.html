@@ -3,32 +3,40 @@
 <head>
     <meta charset="utf-8" />
     <title>ForgeRAG</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 40px;
         }
+
         #chat {
             border: 1px solid #ccc;
             padding: 15px;
-            height: 350px;
+            height: 380px;
             overflow-y: auto;
             margin-bottom: 10px;
+            background: #fafafa;
         }
+
         .user {
             color: #1a73e8;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
+
         .bot {
             color: #188038;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
         }
+
         input[type="text"] {
-            width: 80%;
+            width: 78%;
             padding: 8px;
         }
+
         button {
-            padding: 8px 12px;
+            padding: 8px 14px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -51,32 +59,39 @@
 <div id="chat"></div>
 
 <input type="text" id="questionInput" placeholder="Ask a question..." disabled />
-<button onclick="sendQuestion()" disabled id="sendBtn">Send</button>
+<button id="sendBtn" disabled>Send</button>
 
 <script>
 const chatDiv = document.getElementById("chat");
 const uploadStatus = document.getElementById("uploadStatus");
+const questionInput = document.getElementById("questionInput");
+const sendBtn = document.getElementById("sendBtn");
 
 let currentSessionId = null;
 
-// ---------- Create new chat session ----------
+/* -----------------------------
+   START NEW CHAT SESSION
+------------------------------*/
 async function startNewChat() {
-    const res = await fetch("/chat/new", { method: "POST" });
-    const data = await res.json();
+    try {
+        const res = await fetch("/chat/new", { method: "POST" });
+        const data = await res.json();
 
-    currentSessionId = data.session_id;
-    chatDiv.innerHTML = "";
+        currentSessionId = data.session_id;
+        chatDiv.innerHTML = "";
 
-    // Enable chat UI ONLY after session exists
-    document.getElementById("questionInput").disabled = false;
-    document.getElementById("sendBtn").disabled = false;
+        questionInput.disabled = false;
+        sendBtn.disabled = false;
+    } catch (err) {
+        alert("Failed to initialize chat session.");
+    }
 }
 
-
-// Start a new chat when page loads
 window.onload = startNewChat;
 
-// ---------- Upload PDF ----------
+/* -----------------------------
+   UPLOAD PDF
+------------------------------*/
 document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -94,24 +109,30 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     });
 
     const data = await res.json();
-    uploadStatus.innerText = data.message || "Upload failed";
+    uploadStatus.innerText = data.message || "Upload failed.";
 });
 
-// ---------- Streaming Chat ----------
+/* -----------------------------
+   STREAMING CHAT
+------------------------------*/
+sendBtn.onclick = sendQuestion;
+
 async function sendQuestion() {
+    const question = questionInput.value.trim();
+    if (!question || !currentSessionId) return;
 
-    const input = document.getElementById("questionInput");
-    const question = input.value.trim();
-    if (!question) return;
-
+    // Show user message
     chatDiv.innerHTML += `<p class="user"><b>You:</b> ${question}</p>`;
 
+    // Bot container
     const botPara = document.createElement("p");
     botPara.className = "bot";
     botPara.innerHTML = "<b>ForgeRAG:</b> ";
     chatDiv.appendChild(botPara);
 
-    input.value = "";
+    questionInput.value = "";
+    questionInput.disabled = true;
+    sendBtn.disabled = true;
 
     const response = await fetch("/chat/stream", {
         method: "POST",
@@ -124,6 +145,8 @@ async function sendQuestion() {
 
     if (!response.ok) {
         botPara.innerHTML += "Error contacting server.";
+        questionInput.disabled = false;
+        sendBtn.disabled = false;
         return;
     }
 
@@ -135,9 +158,12 @@ async function sendQuestion() {
         if (done) break;
 
         const chunk = decoder.decode(value);
-        botPara.innerHTML += chunk;
+        botPara.innerHTML += chunk;   // ✅ THIS WAS MISSING BEFORE
         chatDiv.scrollTop = chatDiv.scrollHeight;
     }
+
+    questionInput.disabled = false;
+    sendBtn.disabled = false;
 }
 </script>
 

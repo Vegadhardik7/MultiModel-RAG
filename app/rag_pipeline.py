@@ -5,23 +5,28 @@ from memory.session_memory import SessionMemory
 
 
 # ---------------- PROMPT BUILDING ----------------
-def build_prompt(
-    context_docs: List[dict],
-    query: str,
-    history: str | None = None
-) -> str:
-    context = "\n\n".join(
-        c["text"] for c in context_docs
-    )
+def build_prompt(context_docs, query, history=None):
+    context_lines = []
 
-    history_block = f"\nConversation history:\n{history}\n" if history else ""
+    for c in context_docs:
+        if c.get("type") == "image":
+            # Keep semantic info, no URLs
+            line = f"Image (page {c.get('page')}): {c['text']}"
+            context_lines.append(line)
+        else:
+            context_lines.append(c["text"])
 
-    prompt = f"""
-        You are a precise assistant.
-        Use the provided context to answer the question.
+    context = "\n\n".join(context_lines)
+
+    return f"""
+        You are a document assistant.
+
+        Use the context below to answer the question.
+        Images are described textually — do NOT attempt to show or display them.
         If the answer is not in the context, say "I don't know".
 
-        {history_block}
+        Conversation history:
+        {history or "None"}
 
         Context:
         {context}
@@ -30,8 +35,8 @@ def build_prompt(
         {query}
 
         Answer:
-    """
-    return prompt.strip()
+        """.strip()
+
 
 
 def build_retrieval_query(query: str, history: str | None) -> str:

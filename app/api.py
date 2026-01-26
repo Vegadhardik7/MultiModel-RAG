@@ -5,7 +5,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-
+import os
 from app.ingest.multimodal_pdf_ingest import ingest_multimodal_pdf
 from app.rag_pipeline import run_rag, run_rag_stream
 from memory.session_store import SessionStore
@@ -23,6 +23,7 @@ app = FastAPI()
 store = SessionStore()
 
 # ---------------- CHAT SESSION APIS ----------------
+
 @app.post("/chat/new")
 def new_chat():
     session_id = str(uuid.uuid4())
@@ -36,6 +37,7 @@ def list_chats():
 
 
 # ---------------- CHAT APIS ----------------
+
 class ChatRequest(BaseModel):
     session_id: str
     question: str
@@ -58,7 +60,19 @@ def chat_stream(req: ChatRequest):
         media_type="text/plain"
     )
 
+# ---------------- RETRIEVE IMG ----------------
+
+from fastapi.responses import FileResponse
+
+@app.get("/image")
+def serve_image(path: str):
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(path)
+
+
 # ---------------- PDF UPLOAD + INGEST ----------------
+
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -76,6 +90,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 # ---------------- FRONTEND ----------------
+
 # MUST be mounted LAST
 app.mount(
     "/",
