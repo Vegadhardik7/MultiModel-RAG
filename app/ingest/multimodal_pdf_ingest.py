@@ -132,7 +132,3 @@ def ingest_multimodal_pdf(pdf_path: str):
     )
 
     print(f"Ingested {len(texts)} multimodal elements from {pdf_path}")
-
-if __name__ == "__main__":
-    path = "D:\\Multi-Model-Forge-RAG\\data\\spinal-cord-paper.pdf"
-    ingest_multimodal_pdf(path)

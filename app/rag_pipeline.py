@@ -1,11 +1,10 @@
 from typing import List, Generator
 from app.retriever import retrieve
 from app.llm.ollama_client import generate, generate_stream
-from app.memory.chat_memory import ChatMemory
-
-_memory = ChatMemory()
+from memory.session_memory import SessionMemory
 
 
+# ---------------- PROMPT BUILDING ----------------
 def build_prompt(
     context_docs: List[dict],
     query: str,
@@ -35,84 +34,82 @@ def build_prompt(
     return prompt.strip()
 
 
-def build_retrieval_query(
-    query: str,
-    history: str | None
-) -> str:
-    """
-    Use conversation history to make retrieval aware
-    of previous context for follow-up questions.
-    """
+def build_retrieval_query(query: str, history: str | None) -> str:
     if not history:
         return query
-
     return f"{history}\nUser question: {query}"
 
-def run_rag(query: str, k: int = 5) -> str:
-    _memory.add_user(query)
 
-    history = _memory.get_context()
+def format_citations(chunks: List[dict]) -> str:
+    seen = set()
+    citations = []
+    idx = 1
+
+    for c in chunks:
+        key = (c.get("source"), c.get("page"))
+        if key in seen:
+            continue
+        seen.add(key)
+
+        citations.append(
+            f"[{idx}] {c.get('source', 'unknown')} — page {c.get('page', 'unknown')}"
+        )
+        idx += 1
+
+    return "\n".join(citations)
+
+
+# ---------------- NON-STREAMING RAG ----------------
+def run_rag(query: str, session_id: str, k: int = 5) -> str:
+    memory = SessionMemory(session_id)
+
+    memory.add_user(query)
+    history = memory.get_context()
+
     retrieval_query = build_retrieval_query(query, history)
+    chunks = retrieve(retrieval_query, k=k)
 
-    docs = retrieve(retrieval_query, k=k)
-
-    print("\n[DEBUG]")
-    print("Retrieval query:")
-    print(retrieval_query)
-    print("Retrieved docs count:", len(docs))
-
-
-    if not docs:
+    if not chunks:
         answer = "I don't know."
-        _memory.add_assistant(answer)
+        memory.add_assistant(answer)
         return answer
 
-    prompt = build_prompt(docs, query, history)
+    prompt = build_prompt(chunks, query, history)
     answer = generate(prompt)
 
-    _memory.add_assistant(answer)
-    return answer
+    citations = format_citations(chunks)
+    final_answer = f"{answer}\n\nSources:\n{citations}"
+
+    memory.add_assistant(final_answer)
+    return final_answer
 
 
+# ---------------- STREAMING RAG ----------------
+def run_rag_stream(
+    query: str,
+    session_id: str,
+    k: int = 5
+) -> Generator[str, None, None]:
 
-def run_rag_stream(query: str, k: int = 5):
-    _memory.add_user(query)
+    memory = SessionMemory(session_id)
 
-    history = _memory.get_context()
+    memory.add_user(query)
+    history = memory.get_context()
+
     retrieval_query = build_retrieval_query(query, history)
+    chunks = retrieve(retrieval_query, k=k)
 
-    docs = retrieve(retrieval_query, k=k)
-
-    if not docs:
+    if not chunks:
         answer = "I don't know."
-        _memory.add_assistant(answer)
+        memory.add_assistant(answer)
         yield answer
         return
 
-    prompt = build_prompt(docs, query, history)
+    prompt = build_prompt(chunks, query, history)
 
     final_answer = ""
     for token in generate_stream(prompt):
         final_answer += token
         yield token
 
-    _memory.add_assistant(final_answer)
-
-
-# ---------------------------------------------------
-# 🔹 MEMORY TEST (LOCAL RUN)
-# ---------------------------------------------------
-if __name__ == "__main__":
-    questions = [
-        "What is spinal cord regeneration?",
-        "Are there any diagrams related to it?",
-        "Explain that simply."
-    ]
-
-    for q in questions:
-        print("\n==============================")
-        print(f"USER: {q}")
-        print("ASSISTANT:")
-
-        answer = run_rag(q)
-        print(answer)
+    memory.add_assistant(final_answer)

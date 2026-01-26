@@ -50,12 +50,31 @@
 <h3>Chat</h3>
 <div id="chat"></div>
 
-<input type="text" id="questionInput" placeholder="Ask a question..." />
-<button onclick="sendQuestion()">Send</button>
+<input type="text" id="questionInput" placeholder="Ask a question..." disabled />
+<button onclick="sendQuestion()" disabled id="sendBtn">Send</button>
 
 <script>
 const chatDiv = document.getElementById("chat");
 const uploadStatus = document.getElementById("uploadStatus");
+
+let currentSessionId = null;
+
+// ---------- Create new chat session ----------
+async function startNewChat() {
+    const res = await fetch("/chat/new", { method: "POST" });
+    const data = await res.json();
+
+    currentSessionId = data.session_id;
+    chatDiv.innerHTML = "";
+
+    // Enable chat UI ONLY after session exists
+    document.getElementById("questionInput").disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+}
+
+
+// Start a new chat when page loads
+window.onload = startNewChat;
 
 // ---------- Upload PDF ----------
 document.getElementById("uploadForm").addEventListener("submit", async (e) => {
@@ -80,6 +99,7 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 
 // ---------- Streaming Chat ----------
 async function sendQuestion() {
+
     const input = document.getElementById("questionInput");
     const question = input.value.trim();
     if (!question) return;
@@ -96,8 +116,16 @@ async function sendQuestion() {
     const response = await fetch("/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question })
+        body: JSON.stringify({
+            session_id: currentSessionId,
+            question: question
+        })
     });
+
+    if (!response.ok) {
+        botPara.innerHTML += "Error contacting server.";
+        return;
+    }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();

@@ -1,13 +1,14 @@
-import os
 import shutil
+import uuid
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.ingest.pdf_ingest import ingest_pdf
+from app.ingest.multimodal_pdf_ingest import ingest_multimodal_pdf
 from app.rag_pipeline import run_rag, run_rag_stream
+from memory.session_store import SessionStore
 
 # ---------------- CONFIG ----------------
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -18,21 +19,49 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI()
 
-# ---------------- FRONTEND ----------------
-# MUST be mounted before API routes
-app.mount(
-    "/",
-    StaticFiles(directory=str(FRONTEND_DIR), html=True),
-    name="frontend"
-)
+# ---------------- CHAT SESSION STORE ----------------
+store = SessionStore()
 
-# ---------------- API ----------------
+# ---------------- CHAT SESSION APIS ----------------
+@app.post("/chat/new")
+def new_chat():
+    session_id = str(uuid.uuid4())
+    store.create_session(session_id)
+    return {"session_id": session_id}
+
+
+@app.get("/chat/sessions")
+def list_chats():
+    return store.list_sessions()
+
+
+# ---------------- CHAT APIS ----------------
+class ChatRequest(BaseModel):
+    session_id: str
+    question: str
+
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    answer = run_rag(req.question, session_id=req.session_id)
+    return {"answer": answer}
+
+
+@app.post("/chat/stream")
+def chat_stream(req: ChatRequest):
+    def event_generator():
+        for token in run_rag_stream(req.question, session_id=req.session_id):
+            yield token
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/plain"
+    )
+
+# ---------------- PDF UPLOAD + INGEST ----------------
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Invalid file")
-
-    if not file.filename.lower().endswith(".pdf"):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
 
     file_path = UPLOAD_DIR / file.filename
@@ -40,33 +69,16 @@ async def upload_pdf(file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    ingest_pdf(str(file_path))
+    # 🔥 Multimodal ingestion (text + tables + images + CLIP)
+    ingest_multimodal_pdf(str(file_path))
+
     return {"message": f"{file.filename} ingested successfully"}
 
 
-class ChatRequest(BaseModel):
-    question: str
-
-
-@app.post("/chat")
-def chat(req: ChatRequest):
-    """
-    Non-streaming chat (kept for debugging/testing)
-    """
-    return {"answer": run_rag(req.question)}
-
-
-@app.post("/chat/stream")
-def chat_stream(req: ChatRequest):
-    """
-    Streaming chat endpoint (ChatGPT-style)
-    """
-
-    def event_generator():
-        for token in run_rag_stream(req.question):
-            yield token
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/plain"
-    )
+# ---------------- FRONTEND ----------------
+# MUST be mounted LAST
+app.mount(
+    "/",
+    StaticFiles(directory=str(FRONTEND_DIR), html=True),
+    name="frontend"
+)

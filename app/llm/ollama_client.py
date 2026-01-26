@@ -74,11 +74,3 @@ def generate_stream(
             if data.get("done", False):
                 break
 
-
-if __name__ == "__main__":
-    print("Streaming output:\n")
-
-    for token in generate_stream("Explain RAG in one sentence."):
-        print(token, end="", flush=True)
-
-    print("\n\n--- done ---")

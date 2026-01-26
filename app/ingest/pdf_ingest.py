@@ -38,7 +38,3 @@ def ingest_pdf(pdf_path: str):
     add_documents(texts, metadatas)
     print(f"Ingested {len(texts)} chunks from {pdf_path}")
 
-
-if __name__ == "__main__":
-    path = "D:\\Multi-Model-Forge-RAG\\data\\spinal-cord-paper.pdf"
-    ingest_pdf(path)

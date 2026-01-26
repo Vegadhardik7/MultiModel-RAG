@@ -5,7 +5,7 @@ from transformers import CLIPModel, CLIPProcessor
 
 # Load once (typed and explicit)
 _clip_model: CLIPModel = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-_processor: CLIPProcessor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+_processor: CLIPProcessor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32",use_fast=True)
 
 VISUAL_LABELS: List[str] = [
     "diagram",
