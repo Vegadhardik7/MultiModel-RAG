@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ForgeRAG — Intelligent Document Assistant</title>
+<title>MultiModelRAG — Intelligent Document Assistant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -683,8 +683,8 @@ to { transform: rotate(360deg); }
 <aside class="sidebar">
 <div class="sidebar-header">
 <div class="brand">
-<div class="brand-icon">F</div>
-<h1 class="brand-name">ForgeRAG</h1>
+<div class="brand-icon">M</div>
+<h1 class="brand-name">MMRAG</h1>
 </div>
 <div class="brand-description">
 Intelligent document assistant for text, tables, and image analysis
@@ -754,7 +754,7 @@ Refresh Sessions
 <div class="chat-container">
 <div class="welcome-screen" id="welcomeScreen">
 <div class="welcome-icon">🧠</div>
-<h1 class="welcome-title">ForgeRAG Assistant</h1>
+<h1 class="welcome-title">MMRAG Assistant</h1>
 <p class="welcome-description">
 Upload a PDF document to start analyzing text, tables, and images with our intelligent AI assistant.
 </p>
@@ -1130,7 +1130,7 @@ function showChatMessage(role, content) {
   messageEl.className = `message ${role} fade-in`;
   
   const isUser = role === 'user';
-  const senderName = isUser ? 'You' : 'ForgeRAG';
+  const senderName = isUser ? 'You' : 'MMRAG';
   const senderColor = isUser ? '#6da7fb' : 'var(--accent-primary)';
   
   messageEl.innerHTML = `
@@ -1185,7 +1185,7 @@ async function sendMessage() {
   assistantDiv.id = streamingId;
   assistantDiv.innerHTML = `
     <div class="message-header" style="color: var(--accent-primary)">
-      <span class="sender-name">ForgeRAG</span>
+      <span class="sender-name">MMRAG</span>
     </div>
     <div class="message-content">
       <div class="typing-indicator-container" style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-start;">

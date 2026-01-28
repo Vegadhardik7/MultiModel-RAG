@@ -3,7 +3,7 @@
 venv/
 .ragvenv/
 .ragenv/
-
+figures/
 # Environment files
 .env
 .env.*
