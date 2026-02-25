@@ -4,6 +4,7 @@
 
 # MultiModel-RAG Architecture Flow
 
+```
                         ┌──────────────────────────┐
                         │   User uploads PDF       │
                         └──────────────┬───────────┘
@@ -63,6 +64,7 @@ Final Answer
       │
       ▼
 Stored in Session Memory (last 4 turns)
+```
 
 ## 📌 **High-Level Summary of the Project (from Code & Structure)**
 
