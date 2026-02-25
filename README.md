@@ -3,62 +3,66 @@
 ![](output-image.png)
 
 # MultiModel-RAG Architecture Flow
-                        +---------------------+
-                        |   User Interaction   |
-                        | (Frontend UI in HTML)|
-                        +----------+----------+
-                                   |
-                                   v
-                        +---------------------+
-                        |   FastAPI Backend   |
-                        |   (app/api routes)  |
-                        +----------+----------+
-                                   |
-                                   |
-                  +----------------+----------------+
-                  |                                 |
-                  v                                 v
-         +------------------+            +----------------------+
-         |   Text Ingestion |            |   Image Ingestion     |
-         | (parse uploaded  |            | (parse user images)   |
-         |    text files)   |            |                      |
-         +--------+---------+            +----------+-----------+
-                  |                                   |
-                  v                                   v
-       +----------------------+           +-----------------------+
-       |  Text Embeddings     |           |   Image Embeddings    |
-       | (sentence/embed text)|           |   (CLIP or visual)    |
-       +-----------+----------+           +-----------+-----------+
-                   |                                  |
-                   v                                  v
-            +-----------------------------------------------+
-            |                Vector Store (ChromaDB)         |
-            |   (store & index text + image vectors)         |
-            +------------------+----------------------------+
-                               |
-                               v
-                  +-------------------------------+
-                  |         Retriever Module      |
-                  |  (search by query similarity) |
-                  +---------------+---------------+
-                                  |
-                                  v
-                     +---------------------------+
-                     |      LLM Client Module    |
-                     |  (Llama 3.1 8B via Ollama)|
-                     +-------------+-------------+
-                                   |
-                                   v
-                      +-------------------------+
-                      |   Generated Answer      |
-                      |  (RAG Response to User) |
-                      +-------------------------+
-                                   |
-                                   v
-                          +-----------------+
-                          | Frontend Output |
-                          +-----------------+
 
+                        ┌──────────────────────────┐
+                        │   User uploads PDF       │
+                        └──────────────┬───────────┘
+                                       │
+                                       ▼
+                   ┌──────────────────────────────────┐
+                   │ partition_pdf() (Unstructured)   │
+                   │ - Text (NarrativeText, Title)    │
+                   │ - Tables                         │
+                   │ - Images                         │
+                   └──────────────┬───────────────────┘
+                                  │
+          ┌───────────────────────┼────────────────────────┐
+          │                       │                        │
+          ▼                       ▼                        ▼
+  Text Elements             Table Elements          Image Elements
+  (len > 80)                _linearize_table()      _describe_image()
+                                                    │
+                                                    └─ CLIP (ViT-B/32)
+                                                       → Visual label
+                                                       → Image context text
+          
+          └───────────────────────┬────────────────────────┘
+                                  ▼
+                        Combined Text Chunks
+                 (Text / "Table: ..." / "Image context: ...")
+                                  │
+                                  ▼
+                     embed_texts() → SentenceTransformer
+                     (all-mpnet-base-v2)
+                                  │
+                                  ▼
+                        Chroma Vector Store
+                (Session-specific PersistentClient)
+                                  │
+                                  ▼
+                         ─────────RAG PHASE─────────
+                                  │
+User Query ───────────────────────┘
+      │
+      ▼
+embed_texts(query)
+      │
+      ▼
+retrieve() from Chroma (top k=6)
+      │
+      ▼
+build_prompt()
+  - Inject retrieved chunks
+  - Inject conversation history
+      │
+      ▼
+Ollama LLM (generate / generate_stream)
+      │
+      ▼
+Final Answer
+      │
+      ▼
+Stored in Session Memory (last 4 turns)
 
 ## 📌 **High-Level Summary of the Project (from Code & Structure)**
 
@@ -69,6 +73,28 @@ This implies the system uses:
 * **Local LLM (likely Llama 3.1 8B)** — for generation
 * **CLIP model** — for vision/text multimodal embeddings
 * **ChromaDB** — as the vector database for retrieval
+
+### **Explain the complete flow of this MultiModel RAG application.**  
+
+This application is built around a multimodal retrieval pipeline with four main stages: **ingestion, embedding, retrieval, and generation**.  
+
+1. **Ingestion:**  
+   The system starts by taking in a PDF document. Using the `partition_pdf()` function from the Unstructured library, the document is broken down into three types of content: text, tables, and images.  
+   - Text is cleaned and filtered based on length.  
+   - Tables are converted into linearized text so they can be processed like normal text.  
+   - Images go through a visual understanding pipeline using the CLIP model (ViT-B/32). CLIP generates descriptive text from the image, making it searchable in the same space as text and tables.  
+
+2. **Embedding:**  
+   Once all content is converted into text chunks (plain text, table text, and image descriptions), these chunks are embedded using the SentenceTransformer model `all-mpnet-base-v2`. The embeddings are stored in a **Chroma vector database**, with each session having its own persistent client to ensure isolation.  
+
+3. **Retrieval:**  
+   When a user asks a question, the query itself is embedded using the same SentenceTransformer model. The system then performs a similarity search in Chroma to find the most relevant chunks (top-k results).  
+
+4. **Generation:**  
+   The retrieved chunks are combined with the user’s recent conversation history to form a structured prompt. This prompt is sent to the Ollama LLM, which generates a response. The output can be streamed or returned as a complete answer, and the conversation history is updated for continuity.  
+
+**In summary:**  
+The system takes text, tables, and images from a PDF, converts them into a unified embedding space, stores them in a vector database, retrieves the most relevant information when queried, and finally uses an LLM to generate contextual answers. This makes the application capable of handling multimodal inputs while delivering precise, conversational outputs.  
 
 ---
 
